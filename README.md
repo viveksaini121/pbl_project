@@ -75,3 +75,64 @@ X_test.assign(LabelEncoded=y_test.values).to_csv("data/processed/test.csv", inde
 - `df.to_csv(...)`: save full cleaned dataset.
 - `X_train.assign(...).to_csv(...)`: save train set with target.
 - `X_test.assign(...).to_csv(...)`: save test set with target.
+
+## Simple Random Forest training code (scikit-learn)
+
+```python
+import pandas as pd
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+
+# Load cleaned train and test files
+train_df = pd.read_csv("data/processed/train.csv")
+test_df = pd.read_csv("data/processed/test.csv")
+
+# Separate features and label
+X_train = train_df.drop(columns=["LabelEncoded"])
+y_train = train_df["LabelEncoded"]
+X_test = test_df.drop(columns=["LabelEncoded"])
+y_test = test_df["LabelEncoded"]
+
+# Create Random Forest model
+model = RandomForestClassifier(n_estimators=100, random_state=42, n_jobs=-1)
+
+# Train model
+model.fit(X_train, y_train)
+
+# Predict on test data
+y_pred = model.predict(X_test)
+
+# Print metrics
+print("Accuracy :", accuracy_score(y_test, y_pred))
+print("Precision:", precision_score(y_test, y_pred, average="weighted", zero_division=0))
+print("Recall   :", recall_score(y_test, y_pred, average="weighted", zero_division=0))
+print("F1 Score :", f1_score(y_test, y_pred, average="weighted", zero_division=0))
+```
+
+### Explain every line simply
+
+- `import pandas as pd`: import pandas to read CSV files.
+- `from sklearn.ensemble import RandomForestClassifier`: import Random Forest model.
+- `from sklearn.metrics ...`: import accuracy, precision, recall, and F1 metric functions.
+- `train_df = pd.read_csv(...)`: read training CSV.
+- `test_df = pd.read_csv(...)`: read testing CSV.
+- `X_train = ...drop(...)`: keep only feature columns for training.
+- `y_train = ...`: take encoded label as target for training.
+- `X_test = ...drop(...)`: keep only feature columns for testing.
+- `y_test = ...`: take encoded label as target for testing.
+- `model = RandomForestClassifier(...)`: create model with 100 trees.
+- `model.fit(X_train, y_train)`: train model using training data.
+- `y_pred = model.predict(X_test)`: predict labels for test rows.
+- `accuracy_score(...)`: compute correct prediction ratio.
+- `precision_score(...)`: compute precision (weighted for multiclass).
+- `recall_score(...)`: compute recall (weighted for multiclass).
+- `f1_score(...)`: compute F1 score (weighted for multiclass).
+- `print(...)`: show each metric in terminal.
+
+### Run model training
+
+```bash
+cd ~/xnids
+source .venv/bin/activate
+python train_rf_simple.py
+```
