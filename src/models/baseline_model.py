@@ -13,6 +13,8 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+import joblib
+import numpy as np
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
@@ -32,6 +34,12 @@ def parse_args() -> argparse.Namespace:
         type=Path,
         default=Path("data/processed/test.csv"),
         help="Path to processed testing CSV (default: data/processed/test.csv)",
+    )
+    parser.add_argument(
+        "--model-out",
+        type=Path,
+        default=Path("models/baseline_rf.joblib"),
+        help="Path to save trained model (default: models/baseline_rf.joblib)",
     )
     parser.add_argument(
         "--n-estimators",
@@ -76,6 +84,21 @@ def main() -> None:
     X_test = test_df.drop(columns=[target_col])
     y_test = test_df[target_col]
 
+    # Safety cleanup: replace inf values with NaN and remove bad rows.
+    X_train = X_train.replace([np.inf, -np.inf], np.nan)
+    X_test = X_test.replace([np.inf, -np.inf], np.nan)
+
+    valid_train = ~X_train.isna().any(axis=1)
+    valid_test = ~X_test.isna().any(axis=1)
+
+    X_train = X_train.loc[valid_train]
+    y_train = y_train.loc[valid_train]
+    X_test = X_test.loc[valid_test]
+    y_test = y_test.loc[valid_test]
+
+    print(f"Training rows after cleanup: {len(X_train)}")
+    print(f"Testing rows after cleanup : {len(X_test)}")
+
     # Build a baseline Random Forest model.
     model = RandomForestClassifier(
         n_estimators=args.n_estimators,
@@ -85,6 +108,11 @@ def main() -> None:
 
     # Train the model.
     model.fit(X_train, y_train)
+
+    # Save model so Streamlit app can use it.
+    args.model_out.parent.mkdir(parents=True, exist_ok=True)
+    joblib.dump(model, args.model_out)
+    print(f"Saved trained model to: {args.model_out}")
 
     # Predict labels for test data.
     y_pred = model.predict(X_test)

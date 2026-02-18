@@ -13,6 +13,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
 
@@ -62,13 +63,18 @@ def main() -> None:
     df = pd.read_csv(input_csv)
     print(f"Loaded {len(df)} rows from {input_csv}")
 
-    # Step 2: Clean missing values.
-    # dropna() removes rows that contain empty/null values.
-    df = df.dropna().copy()
-    print(f"Rows after removing missing values: {len(df)}")
-
     # Remove extra spaces in column names (common in CICIDS CSV headers).
     df.columns = [c.strip() for c in df.columns]
+
+    # Step 2: Clean bad numeric values.
+    # Replace +inf/-inf with NaN so they can be removed.
+    feature_cols = [c for c in df.columns if c != "Label"]
+    df[feature_cols] = df[feature_cols].replace([np.inf, -np.inf], np.nan)
+
+    # dropna() removes rows that contain empty/null values.
+    rows_before = len(df)
+    df = df.dropna().copy()
+    print(f"Rows after removing missing/infinite values: {len(df)} (removed {rows_before - len(df)})")
 
     # Step 3: Encode labels.
     # CICIDS uses text labels like BENIGN, DoS, PortScan, etc.

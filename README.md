@@ -42,3 +42,19 @@ streamlit run app/app.py
 - `shap_values ...`: compute feature contribution values.
 - `waterfall(...)`: visualize top feature effects for first row.
 - `abs(sv) ... head(10)`: top 10 strongest SHAP features table.
+
+## Fix for error: "Input X contains infinity or a value too large"
+
+If you see this while running `baseline_model.py`, it means your dataset still has `inf` / `-inf` values.
+
+The updated pipeline now handles this automatically:
+- `src/load_data.py` replaces `inf/-inf` with `NaN`, then drops invalid rows.
+- `src/models/baseline_model.py` applies a final safety cleanup before training.
+
+Run again in this order:
+
+```bash
+python src/load_data.py --input "data/MachineLearningCVE/Friday-WorkingHours-Afternoon-DDos.pcap_ISCX.csv"
+python src/models/baseline_model.py
+streamlit run app/app.py
+```
