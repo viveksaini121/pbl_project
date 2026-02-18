@@ -2,3 +2,5 @@ pandas
 scikit-learn
 shap
 matplotlib
+jupyter
+streamlit
