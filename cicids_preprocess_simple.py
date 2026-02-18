@@ -45,13 +45,11 @@ def resolve_input_path(input_arg: Path | None) -> Path:
     if input_arg is not None:
         return input_arg
 
-    # Most users run from ~/xnids, so try data/*.csv first.
     candidates = sorted(Path("data").glob("*.csv"))
     if candidates:
         print(f"No --input provided. Using: {candidates[0]}")
         return candidates[0]
 
-    # Fallback for repository layout where CSVs are under xnids/data.
     candidates = sorted(Path("xnids/data").glob("*.csv"))
     if candidates:
         print(f"No --input provided. Using: {candidates[0]}")
@@ -94,16 +92,20 @@ def main() -> None:
             "Tip: pass the real file path using --input"
         )
 
-    # Create output folder if it does not exist.
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # 1) Load CSV
+    # 1) Load CICIDS CSV
     df = pd.read_csv(input_csv)
+    rows_before = len(df)
+    print(f"✅ Step 1 done: Loaded CSV with {rows_before} rows.")
 
     # 2) Remove missing values
     df = df.dropna()
+    rows_after_dropna = len(df)
+    removed_rows = rows_before - rows_after_dropna
+    print(f"✅ Step 2 done: Removed {removed_rows} rows with missing values.")
 
-    # Normalize column names (CICIDS files can include extra spaces).
+    # Normalize column names because CICIDS headers may contain extra spaces.
     df.columns = [col.strip() for col in df.columns]
 
     # 3) Convert attack labels to numbers
@@ -116,6 +118,7 @@ def main() -> None:
     unique_labels = sorted(df[label_col].unique())
     label_to_id = {label: idx for idx, label in enumerate(unique_labels)}
     df["LabelEncoded"] = df[label_col].map(label_to_id)
+    print(f"✅ Step 3 done: Encoded {len(unique_labels)} label classes.")
 
     # 4) Split into train and test
     X = df.drop(columns=[label_col, "LabelEncoded"])
@@ -128,15 +131,24 @@ def main() -> None:
         random_state=42,
         stratify=y,
     )
+    print(f"✅ Step 4 done: Train rows = {len(X_train)}, Test rows = {len(X_test)}.")
 
     # 5) Save cleaned data
-    df.to_csv(output_dir / "cleaned_full.csv", index=False)
-    X_train.assign(LabelEncoded=y_train.values).to_csv(output_dir / "train.csv", index=False)
-    X_test.assign(LabelEncoded=y_test.values).to_csv(output_dir / "test.csv", index=False)
-    pd.Series(label_to_id, name="label_id").to_csv(output_dir / "label_mapping.csv")
+    cleaned_file = output_dir / "cleaned_full.csv"
+    train_file = output_dir / "train.csv"
+    test_file = output_dir / "test.csv"
+    mapping_file = output_dir / "label_mapping.csv"
 
-    print("Done. Files saved in:", output_dir)
-    print("Label mapping:", label_to_id)
+    df.to_csv(cleaned_file, index=False)
+    X_train.assign(LabelEncoded=y_train.values).to_csv(train_file, index=False)
+    X_test.assign(LabelEncoded=y_test.values).to_csv(test_file, index=False)
+    pd.Series(label_to_id, name="label_id").to_csv(mapping_file)
+
+    print("✅ Step 5 done: Saved output files.")
+    print("-", cleaned_file)
+    print("-", train_file)
+    print("-", test_file)
+    print("-", mapping_file)
 
 
 if __name__ == "__main__":
