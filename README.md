@@ -58,3 +58,16 @@ python src/load_data.py --input "data/MachineLearningCVE/Friday-WorkingHours-Aft
 python src/models/baseline_model.py
 streamlit run app/app.py
 ```
+
+## Large CSV uploads (CSE-CICIDS2018)
+
+If your CSV is bigger than 200 MB:
+
+1. Use the **Use local CSV path** option in the app (recommended for very large files).
+2. Or rely on Streamlit upload limit increased to 1024 MB via `.streamlit/config.toml`.
+
+Example run:
+
+```bash
+streamlit run app/app.py
+```
