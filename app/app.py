@@ -11,6 +11,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import joblib
+import numpy as np
 import pandas as pd
 import shap
 import streamlit as st
@@ -92,6 +93,23 @@ for feature in missing_features:
 # Keep only expected columns in exact order.
 X = input_df[expected_features]
 
+# Convert all feature values to numeric.
+# Non-numeric values become NaN so we can safely remove bad rows.
+X = X.apply(pd.to_numeric, errors="coerce")
+
+# Replace +inf/-inf with NaN, then remove rows with invalid values.
+X = X.replace([np.inf, -np.inf], np.nan)
+valid_rows = ~X.isna().any(axis=1)
+removed_rows = int((~valid_rows).sum())
+X = X.loc[valid_rows].copy()
+
+if removed_rows > 0:
+    st.warning(f"Removed {removed_rows} rows with invalid values (NaN/inf) before prediction.")
+
+if len(X) == 0:
+    st.error("No valid rows left after cleaning. Please upload a cleaner CSV file.")
+    st.stop()
+
 # Button to run prediction.
 if st.button("Predict attack"):
     # Model predicts numeric class ids.
@@ -105,12 +123,12 @@ if st.button("Predict attack"):
 
     # Show predictions.
     st.subheader("Predictions")
-    result_df = pd.DataFrame({"PredictedClass": pred_labels})
+    result_df = pd.DataFrame({"RowIndex": X.index, "PredictedClass": pred_labels})
     st.dataframe(result_df)
 
-    # SHAP explanation for first row only (simple + fast).
-    st.subheader("SHAP explanation (first row)")
-    st.write("This chart shows which features pushed the prediction up or down for the first row.")
+    # SHAP explanation for first valid row only (simple + fast).
+    st.subheader("SHAP explanation (first valid row)")
+    st.write("This chart shows which features pushed the prediction up or down for the first valid row.")
 
     explainer = shap.TreeExplainer(model)
     shap_values = explainer.shap_values(X.iloc[[0]])
